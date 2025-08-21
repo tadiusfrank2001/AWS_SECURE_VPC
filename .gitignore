@@ -1,0 +1,31 @@
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.*
+
+# Variable files with secrets
+terraform.tfvars
+*.tfvars
+
+# SSH keys (NEVER commit these)
+*.pem
+*.key
+*.pub
+
+# Plan files
+*.tfplan
+
+# Local backend lock file
+.terraform.lock.hcl
+
+# Terraform working directory
+.terraform/
+
+# VSCode settings
+.vscode/
+
+# Mac OS / system stuff
+.DS_Store
+
+# Logs or temp files
+*.log
+
