@@ -517,3 +517,51 @@ resource "aws_security_group" "db_sg" {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# AMI DATA SOURCES FOR INSTANCE CREATION
+# =============================================================================
+# Get latest Amazon Linux 2 AMI for bastion and target instances
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+}
+
+# Get latest Kali Linux AMI from official Kali Linux account
+data "aws_ami" "kali_linux" {
+  most_recent = true
+  owners      = ["679593333241"]  # Official Kali Linux AWS account
+
+  filter {
+    name   = "name"
+    values = ["kali-linux-*"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+}
+
+
