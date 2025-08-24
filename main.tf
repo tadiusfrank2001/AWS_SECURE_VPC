@@ -188,3 +188,53 @@ resource "aws_iam_group_policy_attachment" "red_team_policy_attachment" {
 
 
 
+
+
+
+
+
+
+# =============================================================================
+# SUBNET CONFIGURATION - THREE-TIER ARCHITECTURE
+# =============================================================================
+# Public Subnet - Houses bastion host and Kali Linux (Red Team) instance
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true  # Auto-assign public IPs
+
+  tags = {
+    Name        = "${var.project_name}-public-subnet"
+    Type        = "Public"
+    Environment = var.environment
+  }
+}
+
+# Private Application Subnet - Houses application servers (Target infrastructure)
+resource "aws_subnet" "private_app" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_app_subnet_cidr
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  tags = {
+    Name        = "${var.project_name}-private-app-subnet"
+    Type        = "Private"
+    Tier        = "Application"
+    Environment = var.environment
+  }
+}
+
+# Private Database Subnet - Houses database servers (Most protected tier)
+resource "aws_subnet" "private_db" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_db_subnet_cidr
+  availability_zone = data.aws_availability_zones.available.names[1]  # Different AZ for redundancy
+
+  tags = {
+    Name        = "${var.project_name}-private-db-subnet"
+    Type        = "Private"
+    Tier        = "Database"
+    Environment = var.environment
+  }
+}
