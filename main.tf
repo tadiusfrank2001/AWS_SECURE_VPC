@@ -57,3 +57,57 @@ resource "aws_key_pair" "main" {
   }
 }
 
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# IAM ROLES AND POLICIES FOR SESSION MANAGER ACCESS
+# =============================================================================
+# IAM Role that allows EC2 instances to use AWS Systems Manager Session Manager
+# This enables secure shell access without SSH or bastion hosts
+resource "aws_iam_role" "ssm_role" {
+  name = "${var.project_name}-ssm-role"
+
+  # Trust policy: Allow EC2 service to assume this role
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-ssm-role"
+    Environment = var.environment
+  }
+}
+
+# Attach AWS managed policy that provides core Session Manager functionality
+resource "aws_iam_role_policy_attachment" "ssm_managed_policy" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Instance profile to attach the IAM role to EC2 instances
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "${var.project_name}-ssm-profile"
+  role = aws_iam_role.ssm_role.name
+
+  tags = {
+    Name        = "${var.project_name}-ssm-profile"
+    Environment = var.environment
+  }
+}
+
