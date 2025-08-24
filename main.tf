@@ -229,7 +229,7 @@ resource "aws_subnet" "private_app" {
 resource "aws_subnet" "private_db" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_db_subnet_cidr
-  availability_zone = data.aws_availability_zones.available.names[1]  # Different AZ for redundancy
+  availability_zone = data.aws_availability_zones.available.names[0]  # Same AZ zone for practice
 
   tags = {
     Name        = "${var.project_name}-private-db-subnet"
@@ -238,3 +238,4 @@ resource "aws_subnet" "private_db" {
     Environment = var.environment
   }
 }
+
