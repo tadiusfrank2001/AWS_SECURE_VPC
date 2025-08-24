@@ -620,3 +620,26 @@ resource "aws_instance" "kali" {
     Environment = var.environment
   }
 }
+
+
+
+
+# Application Server - Target infrastructure for Red Team attacks
+resource "aws_instance" "app_server" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.app_instance_type
+  key_name               = aws_key_pair.main.key_name
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  subnet_id              = aws_subnet.private_app.id
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
+
+  # Bootstrap script for application server setup
+  user_data = file("${path.module}/scripts/app_server_init.sh")
+
+  tags = {
+    Name        = "${var.project_name}-app-server"
+    Team        = "Target"
+    Tier        = "Application"
+    Environment = var.environment
+  }
+}
