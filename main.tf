@@ -16,6 +16,3 @@ provider "aws" {
     profile = "terraform"  # matches the profile name in ~/.aws/credentials
     region = var.region
 }
-
-
-
