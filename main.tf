@@ -111,3 +111,40 @@ resource "aws_iam_instance_profile" "ssm_profile" {
   }
 }
 
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# RED TEAM IAM GROUP AND RESTRICTED ACCESS POLICIES
+# =============================================================================
+# IAM Group for Red Team members with limited access to attack infrastructure
+resource "aws_iam_group" "red_team" {
+  name = "${var.project_name}-red-team"
+  path = "/"
+}
+
+# Red Team Policy - Restricts access to only Kali Linux instances tagged with Team=Red
+resource "aws_iam_policy" "red_team_policy" {
+  name        = "${var.project_name}-red-team-policy"
+  description = "Policy for Red Team members - Kali instance access only"
+
+  # Load policy document from external JSON file for maintainability
+  policy = file("${path.module}/scripts/red-team-policy.json")
+
+  tags = {
+    Name        = "${var.project_name}-red-team-policy"
+    Environment = var.environment
+  }
+}
+
+# Attach Red Team policy to Red Team group
+resource "aws_iam_group_policy_attachment" "red_team_policy_attachment" {
+  group      = aws_iam_group.red_team.name
+  policy_arn = aws_iam_policy.red_team_policy.arn
+}

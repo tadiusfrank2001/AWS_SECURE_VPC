@@ -29,3 +29,5 @@ terraform.tfvars
 # Logs or temp files
 *.log
 
+# NO JSON FILES
+*.json
