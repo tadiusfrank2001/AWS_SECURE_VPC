@@ -597,3 +597,26 @@ resource "aws_instance" "bastion" {
 }
 
 
+
+
+
+
+# Kali Linux Instance - Red Team attack platform
+resource "aws_instance" "kali" {
+  ami                    = data.aws_ami.kali_linux.id
+  instance_type          = var.kali_instance_type
+  key_name               = aws_key_pair.main.key_name
+  vpc_security_group_ids = [aws_security_group.public_sg.id]
+  subnet_id              = aws_subnet.public.id
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
+
+  # Bootstrap script for Kali Linux configuration
+  user_data = file("${path.module}/scripts/kali_init.sh")
+
+  tags = {
+    Name        = "${var.project_name}-kali"
+    Team        = "Red"
+    Role        = "Attack-Platform"
+    Environment = var.environment
+  }
+}
