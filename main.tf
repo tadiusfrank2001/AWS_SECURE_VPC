@@ -239,3 +239,42 @@ resource "aws_subnet" "private_db" {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# NAT GATEWAY FOR PRIVATE SUBNET INTERNET ACCESS
+# =============================================================================
+# Elastic IP for NAT Gateway (static IP for outbound internet access)
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "${var.project_name}-nat-eip"
+    Environment = var.environment
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# NAT Gateway allows private subnets to access internet for updates/patches
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public.id
+
+  tags = {
+    Name        = "${var.project_name}-nat-gateway"
+    Environment = var.environment
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
