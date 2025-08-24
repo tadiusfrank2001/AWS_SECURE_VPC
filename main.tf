@@ -117,6 +117,42 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 
 
+# =============================================================================
+# BLUE TEAM IAM GROUP AND COMPREHENSIVE ACCESS POLICIES
+# =============================================================================
+# IAM Group for Blue Team members with monitoring and incident response capabilities
+resource "aws_iam_group" "blue_team" {
+  name = "${var.project_name}-blue-team"
+  path = "/"
+}
+
+# Blue Team Policy - Provides comprehensive access for monitoring, defense, and response
+resource "aws_iam_policy" "blue_team_policy" {
+  name        = "${var.project_name}-blue-team-policy"
+  description = "Policy for Blue Team members - Monitoring and response access"
+
+  # Load policy document from external JSON file for maintainability
+  policy = templatefile("${path.module}/scripts/blue-team-policy.json", {
+    region = var.region  # Pass region variable to template
+  })
+
+  tags = {
+    Name        = "${var.project_name}-blue-team-policy"
+    Environment = var.environment
+  }
+}
+
+# Attach Blue Team policy to Blue Team group
+resource "aws_iam_group_policy_attachment" "blue_team_policy_attachment" {
+  group      = aws_iam_group.blue_team.name
+  policy_arn = aws_iam_policy.blue_team_policy.arn
+}
+
+
+
+
+
+
 
 
 
@@ -148,3 +184,7 @@ resource "aws_iam_group_policy_attachment" "red_team_policy_attachment" {
   group      = aws_iam_group.red_team.name
   policy_arn = aws_iam_policy.red_team_policy.arn
 }
+
+
+
+
