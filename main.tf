@@ -565,3 +565,35 @@ data "aws_ami" "kali_linux" {
 }
 
 
+
+
+
+
+
+
+
+
+# =============================================================================
+# EC2 INSTANCES - RED/BLUE TEAM LAB INFRASTRUCTURE
+# =============================================================================
+# Bastion Host - Secure entry point for private network access (Blue Team)
+resource "aws_instance" "bastion" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.bastion_instance_type
+  key_name               = aws_key_pair.main.key_name
+  vpc_security_group_ids = [aws_security_group.public_sg.id]
+  subnet_id              = aws_subnet.public.id
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
+
+  # Bootstrap script for bastion host configuration
+  user_data = file("${path.module}/scripts/bastion_init.sh")
+
+  tags = {
+    Name        = "${var.project_name}-bastion"
+    Team        = "Blue"
+    Role        = "Bastion"
+    Environment = var.environment
+  }
+}
+
+
