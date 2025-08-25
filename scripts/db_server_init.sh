@@ -5,8 +5,8 @@
 # Lightweight setup for VPC Flow Log testing
 
 # Update system packages
-apt update -y
-apt upgrade -y
+yum update -y
+yum upgrade -y
 
 
 # Install AWS CLI v2
@@ -16,7 +16,7 @@ unzip awscliv2.zip
 rm -rf awscliv2.zip aws/
 
 # Install SSM Agent (needed for EC2 to connect to AWS Systems Manager)
-snap install amazon-ssm-agent --classic
+yum install -y amazon-ssm-agent
 
 # Enable and start the SSM Agent service
 systemctl enable amazon-ssm-agent

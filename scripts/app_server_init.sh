@@ -17,7 +17,7 @@ unzip awscliv2.zip
 rm -rf awscliv2.zip aws/
 
 # Install SSM Agent on Ubuntu/Kali
-snap install amazon-ssm-agent --classic
+yum install -y amazon-ssm-agent
 systemctl enable amazon-ssm-agent
 systemctl start amazon-ssm-agent
 

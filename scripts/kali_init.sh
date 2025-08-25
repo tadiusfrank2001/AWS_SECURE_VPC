@@ -31,17 +31,17 @@ unzip awscliv2.zip
 rm -rf awscliv2.zip aws/
 
 # Install SSM Agent on Ubuntu/Kali
-snap install amazon-ssm-agent --classic
+apt install amazon-ssm-agent --classic
 systemctl enable amazon-ssm-agent
 systemctl start amazon-ssm-agent
 
 # Create red team user directories
-mkdir -p /home/kali/targets
-mkdir -p /home/kali/results
-mkdir -p /home/kali/scripts
+mkdir -p /home/targets
+mkdir -p /home/results
+mkdir -p /home/scripts
 
 # Create target information file with network details
-cat > /home/kali/targets/network_info.txt << 'EOF'
+cat > /home/targets/network_info.txt << 'EOF'
 === RED TEAM TARGET NETWORK ===
 VPC CIDR: 10.0.0.0/16
 Public Subnet: 10.0.1.0/24
@@ -58,14 +58,14 @@ to trigger blue team detection and response.
 EOF
 
 # Create useful red team aliases
-cat >> /home/kali/.bashrc << 'EOF'
+cat >> /home/.bashrc << 'EOF'
 
 # Red Team Aliases
 alias ll='ls -alF'
 alias la='ls -A'
-alias targets='cd /home/kali/targets'
-alias results='cd /home/kali/results'
-alias scripts='cd /home/kali/scripts'
+alias targets='cd /home/targets'
+alias results='cd /home/results'
+alias scripts='cd /home/scripts'
 
 # Quick reconnaissance commands
 alias quick-scan='nmap -sS'
@@ -75,7 +75,7 @@ alias host-discovery='nmap -sn'
 EOF
 
 # Create network reconnaissance script
-cat > /home/kali/scripts/network_recon.sh << 'EOF'
+cat > /home/scripts/network_recon.sh << 'EOF'
 #!/bin/bash
 echo "=== RED TEAM NETWORK RECONNAISSANCE ==="
 echo "Starting network discovery..."
@@ -90,19 +90,17 @@ nmap -sn 10.0.3.0/24
 echo "Quick port scan of discovered hosts:"
 nmap -sS -F 10.0.2.0/24 10.0.3.0/24
 
-echo "Results saved to /home/kali/results/recon_$(date +%Y%m%d_%H%M).txt"
-nmap -sS -F 10.0.2.0/24 10.0.3.0/24 > /home/kali/results/recon_$(date +%Y%m%d_%H%M).txt
+echo "Results saved to /home/results/recon_$(date +%Y%m%d_%H%M).txt"
+nmap -sS -F 10.0.2.0/24 10.0.3.0/24 > /home/results/recon_$(date +%Y%m%d_%H%M).txt
 EOF
 
 
 
 
 # Make scripts executable
-chmod +x /home/kali/scripts/*.sh
+chmod +x /home/scripts/*.sh
 
 
-# Set proper ownership for Kali user
-chown -R kali:kali /home/kali/
 
 # Create red team MOTD
 cat > /etc/motd << 'EOF'
@@ -124,7 +122,7 @@ cat > /etc/motd << 'EOF'
 EOF
 
 # Create a simple status check
-cat > /home/kali/status_check.sh << 'EOF'
+cat > /home/status_check.sh << 'EOF'
 #!/bin/bash
 echo "=== RED TEAM SYSTEM STATUS ==="
 echo "IP Configuration:"
@@ -141,8 +139,7 @@ echo "Installed Tools:"
 which nmap masscan zmap hydra python3
 EOF
 
-chmod +x /home/kali/status_check.sh
-chown kali:kali /home/kali/status_check.sh
+chmod +x /home/status_check.sh
 
 # Log the completion of initialization
-echo "$(date): Kali Linux red team initialization completed" >> /var/log/init.log
+echo "$(date): Kali Imitation LOL Linux red team initialization completed" >> /var/log/init.log
