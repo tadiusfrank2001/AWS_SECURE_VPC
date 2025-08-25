@@ -406,7 +406,7 @@ resource "aws_subnet" "private_db" {
 # =============================================================================
 # NAT GATEWAY FOR PRIVATE SUBNET INTERNET ACCESS
 # =============================================================================
-# Elastic IP for NAT Gateway (static IP for outbound internet access)
+# Elastic IP for NAT Gateway (static IP for outbound internet access)# Elastic IP for NAT Gateway (static IP for outbound internet access)
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -430,6 +430,7 @@ resource "aws_nat_gateway" "main" {
 
   depends_on = [aws_internet_gateway.main]
 }
+
 
 
 
