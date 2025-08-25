@@ -59,6 +59,31 @@ resource "aws_key_pair" "main" {
 
 
 
+# =============================================================================
+# RANDOM RESOURCES FOR DYNAMIC CONFIGURATIONS
+# =============================================================================
+# Generate random CIDR blocks for subnets within the VPC
+resource "random_id" "vpc_cidr" {
+  byte_length = 1
+  keepers = {
+    project = var.project_name
+  }
+}
+
+# Generate secure random passwords for team members
+resource "random_password" "red_team_passwords" {
+  count   = 2
+  length  = 16
+  special = true
+}
+
+resource "random_password" "blue_team_passwords" {
+  count   = 2
+  length  = 16
+  special = true
+}
+
+
 
 
 
