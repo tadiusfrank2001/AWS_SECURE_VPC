@@ -40,9 +40,6 @@ output "security_monitoring" {
     # SNS Topic
     security_alerts_topic    = aws_sns_topic.security_alerts.arn
     
-    # Threat Intelligence (if enabled)
-    threat_intel_bucket      = var.enable_custom_threat_intel ? aws_s3_bucket.guardduty_bucket[0].bucket : null
-    threat_intel_enabled     = var.enable_custom_threat_intel
   }
 }
 
