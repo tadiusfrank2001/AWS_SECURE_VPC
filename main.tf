@@ -710,12 +710,12 @@ data "aws_ami" "kali_linux" {
 
   filter {
     name   = "name"
-    values = ["kali-linux-*"]
+    values = ["kali-linux-*-x86_64-*"] # Matches official AMI names
   }
 
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
+    filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 }
 
