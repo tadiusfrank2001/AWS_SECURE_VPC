@@ -137,6 +137,9 @@ locals {
 
 
 
+
+
+
 # =============================================================================
 # IAM ROLES AND POLICIES FOR SESSION MANAGER ACCESS
 # =============================================================================
@@ -181,6 +184,12 @@ resource "aws_iam_instance_profile" "ssm_profile" {
     Environment = var.environment
   }
 }
+
+
+
+
+
+
 
 
 
@@ -246,6 +255,10 @@ resource "aws_iam_group_membership" "blue_team_membership" {
   group = aws_iam_group.blue_team.name
   users = aws_iam_user.blue_team_members[*].name
 }
+
+
+
+
 
 
 
@@ -320,6 +333,18 @@ resource "aws_iam_group_membership" "red_team_membership" {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 # =============================================================================
 # SUBNET CONFIGURATION - THREE-TIER ARCHITECTURE
 # =============================================================================
@@ -355,7 +380,7 @@ resource "aws_subnet" "private_app" {
 resource "aws_subnet" "private_db" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_db_subnet_cidr
-  availability_zone = data.aws_availability_zones.available.names[0]  # Same AZ zone for practice
+  availability_zone = data.aws_availability_zones.available.names[0] 
 
   tags = {
     Name        = "${var.project_name}-private-db-subnet"
@@ -364,6 +389,8 @@ resource "aws_subnet" "private_db" {
     Environment = var.environment
   }
 }
+
+
 
 
 
