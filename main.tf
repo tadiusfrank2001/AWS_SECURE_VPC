@@ -213,12 +213,39 @@ resource "aws_iam_policy" "blue_team_policy" {
   }
 }
 
-# Attach Blue Team policy to Blue Team group
+
+# Attach Blue Team policy to group
 resource "aws_iam_group_policy_attachment" "blue_team_policy_attachment" {
   group      = aws_iam_group.blue_team.name
   policy_arn = aws_iam_policy.blue_team_policy.arn
 }
 
+# Blue Team IAM Users
+resource "aws_iam_user" "blue_team_members" {
+  count = length(local.blue_team_members)
+  name  = local.blue_team_members[count.index].username
+
+  tags = {
+    Name        = local.blue_team_members[count.index].username
+    Team        = "Blue"
+    Environment = var.environment
+  }
+}
+
+# Blue Team User Login Profiles
+resource "aws_iam_user_login_profile" "blue_team_profiles" {
+  count   = length(local.blue_team_members)
+  user    = aws_iam_user.blue_team_members[count.index].name
+  password = local.blue_team_members[count.index].password
+  password_reset_required = true
+}
+
+# Add Blue Team users to group
+resource "aws_iam_group_membership" "blue_team_membership" {
+  name  = "${var.project_name}-blue-team-membership"
+  group = aws_iam_group.blue_team.name
+  users = aws_iam_user.blue_team_members[*].name
+}
 
 
 
