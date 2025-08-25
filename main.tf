@@ -250,10 +250,38 @@ resource "aws_iam_policy" "red_team_policy" {
   }
 }
 
-# Attach Red Team policy to Red Team group
+
+# Attach Red Team policy to group
 resource "aws_iam_group_policy_attachment" "red_team_policy_attachment" {
   group      = aws_iam_group.red_team.name
   policy_arn = aws_iam_policy.red_team_policy.arn
+}
+
+# Red Team IAM Users
+resource "aws_iam_user" "red_team_members" {
+  count = length(local.red_team_members)
+  name  = local.red_team_members[count.index].username
+
+  tags = {
+    Name        = local.red_team_members[count.index].username
+    Team        = "Red"
+    Environment = var.environment
+  }
+}
+
+# Red Team User Login Profiles
+resource "aws_iam_user_login_profile" "red_team_profiles" {
+  count   = length(local.red_team_members)
+  user    = aws_iam_user.red_team_members[count.index].name
+  password = local.red_team_members[count.index].password
+  password_reset_required = true
+}
+
+# Add Red Team users to group
+resource "aws_iam_group_membership" "red_team_membership" {
+  name  = "${var.project_name}-red-team-membership"
+  group = aws_iam_group.red_team.name
+  users = aws_iam_user.red_team_members[*].name
 }
 
 
