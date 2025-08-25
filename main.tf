@@ -710,29 +710,6 @@ data "aws_ami" "kali_linux" {
 # =============================================================================
 # EC2 INSTANCES - RED/BLUE TEAM LAB INFRASTRUCTURE
 # =============================================================================
-# Bastion Host - Secure entry point for private network access (Blue Team)
-resource "aws_instance" "bastion" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = var.bastion_instance_type
-  key_name               = aws_key_pair.main.key_name
-  vpc_security_group_ids = [aws_security_group.public_sg.id]
-  subnet_id              = aws_subnet.public.id
-  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
-
-  # Bootstrap script for bastion host configuration
-  user_data = file("${path.module}/scripts/bastion_init.sh")
-
-  tags = {
-    Name        = "${var.project_name}-bastion"
-    Team        = "Blue"
-    Role        = "Bastion"
-    Environment = var.environment
-  }
-}
-
-
-
-
 
 
 # Kali Linux Instance - Red Team attack platform
@@ -740,11 +717,10 @@ resource "aws_instance" "kali" {
   ami                    = data.aws_ami.kali_linux.id
   instance_type          = var.kali_instance_type
   key_name               = aws_key_pair.main.key_name
-  vpc_security_group_ids = [aws_security_group.public_sg.id]
+  vpc_security_group_ids = [aws_security_group.kali_sg.id]
   subnet_id              = aws_subnet.public.id
   iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
 
-  # Bootstrap script for Kali Linux configuration
   user_data = file("${path.module}/scripts/kali_init.sh")
 
   tags = {
@@ -767,8 +743,9 @@ resource "aws_instance" "app_server" {
   subnet_id              = aws_subnet.private_app.id
   iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
 
-  # Bootstrap script for application server setup
-  user_data = file("${path.module}/scripts/app_server_init.sh")
+  user_data = templatefile("${path.module}/scripts/app_server_init.sh", {
+    db_server_ip = aws_instance.db_server.private_ip
+  })
 
   tags = {
     Name        = "${var.project_name}-app-server"
@@ -777,3 +754,5 @@ resource "aws_instance" "app_server" {
     Environment = var.environment
   }
 }
+
+
