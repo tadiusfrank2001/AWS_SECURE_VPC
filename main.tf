@@ -245,7 +245,6 @@ resource "aws_iam_user" "blue_team_members" {
 resource "aws_iam_user_login_profile" "blue_team_profiles" {
   count   = length(local.blue_team_members)
   user    = aws_iam_user.blue_team_members[count.index].name
-  password = local.blue_team_members[count.index].password
   password_reset_required = true
 }
 
@@ -313,7 +312,6 @@ resource "aws_iam_user" "red_team_members" {
 resource "aws_iam_user_login_profile" "red_team_profiles" {
   count   = length(local.red_team_members)
   user    = aws_iam_user.red_team_members[count.index].name
-  password = local.red_team_members[count.index].password
   password_reset_required = true
 }
 
