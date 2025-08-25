@@ -326,7 +326,30 @@ resource "aws_iam_group_membership" "red_team_membership" {
 
 
 
+# =============================================================================
+# VPC AND NETWORK INFRASTRUCTURE
+# =============================================================================
+# Main VPC with DNS support
+resource "aws_vpc" "main" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
+  tags = {
+    Name        = "${var.project_name}-vpc"
+    Environment = var.environment
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.project_name}-igw"
+    Environment = var.environment
+  }
+}
 
 
 
