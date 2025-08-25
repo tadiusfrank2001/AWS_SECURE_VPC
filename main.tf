@@ -776,162 +776,288 @@ resource "aws_instance" "db_server" {
 }
 
 
-# =============================================================================
-# GUARDDUTY CONFIGURATION FOR THREAT DETECTION
-# =============================================================================
-# Enable GuardDuty Detector
-resource "aws_guardduty_detector" "main" {
-  enable                       = true
-  finding_publishing_frequency = "FIFTEEN_MINUTES"
 
-  datasources {
-    s3_logs {
-      enable = true
-    }
-    kubernetes {
-      audit_logs {
-        enable = false # Not using EKS in this setup
+
+
+
+
+
+
+
+
+# =============================================================================
+# VPC FLOW LOGS AND MONITORING
+# =============================================================================
+# VPC Flow Logs
+resource "aws_flow_log" "vpc_flow_log" {
+  iam_role_arn    = aws_iam_role.flow_log.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_log.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.project_name}-vpc-flow-logs"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Log Group for VPC Flow Logs
+resource "aws_cloudwatch_log_group" "vpc_flow_log" {
+  name              = "/aws/vpc/flowlogs/${var.project_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-vpc-flow-logs"
+    Environment = var.environment
+  }
+}
+
+# IAM Role for VPC Flow Logs
+resource "aws_iam_role" "flow_log" {
+  name = "${var.project_name}-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = ""
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
       }
-    }
-    malware_protection {
-      scan_ec2_instance_with_findings {
-        ebs_volumes {
-          enable = true
+    ]
+  })
+}
+
+# IAM Policy for VPC Flow Logs
+resource "aws_iam_role_policy" "flow_log" {
+  name = "${var.project_name}-flow-logs-policy"
+  role = aws_iam_role.flow_log.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# CloudWatch Metric Filter for Port Scanning Activity
+resource "aws_cloudwatch_metric_filter" "port_scan_activity" {
+  name           = "${var.project_name}-port-scan-activity"
+  log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
+  
+  # Pattern to detect multiple connection attempts from Kali instance to various ports
+  pattern = "{ ($.srcaddr = \"${aws_instance.kali.private_ip}\") && ($.action = \"REJECT\") }"
+  
+  metric_transformation {
+    name      = "PortScanAttempts"
+    namespace = "${var.project_name}/Security"
+    value     = "1"
+  }
+}
+
+# CloudWatch Metric Filter for Suspicious Database Access
+resource "aws_cloudwatch_metric_filter" "suspicious_activity" {
+  name           = "${var.project_name}-suspicious-activity"
+  log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
+  
+  pattern = "{ ($.srcaddr = \"${aws_instance.kali.private_ip}\") && ($.dstaddr = \"${aws_instance.db_server.private_ip}\") && ($.dstport = 3306) }"
+  
+  metric_transformation {
+    name      = "SuspiciousDBAccess"
+    namespace = "${var.project_name}/Security"
+    value     = "1"
+  }
+}
+
+# CloudWatch Metric Filter for SSH Brute Force Attempts
+resource "aws_cloudwatch_metric_filter" "ssh_brute_force" {
+  name           = "${var.project_name}-ssh-brute-force"
+  log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
+  
+  pattern = "{ ($.srcaddr = \"${aws_instance.kali.private_ip}\") && ($.dstport = 22) && ($.protocol = 6) }"
+  
+  metric_transformation {
+    name      = "SSHBruteForceAttempts"
+    namespace = "${var.project_name}/Security"
+    value     = "1"
+  }
+}
+
+# CloudWatch Alarm for Port Scanning
+resource "aws_cloudwatch_metric_alarm" "port_scan_alarm" {
+  alarm_name          = "${var.project_name}-port-scan-detected"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "PortScanAttempts"
+  namespace           = "${var.project_name}/Security"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "10"
+  alarm_description   = "This metric monitors port scanning attempts from Kali instance"
+  alarm_actions       = [aws_sns_topic.security_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  tags = {
+    Name        = "${var.project_name}-port-scan-alarm"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Alarm for Suspicious Database Access
+resource "aws_cloudwatch_metric_alarm" "suspicious_db_access" {
+  alarm_name          = "${var.project_name}-suspicious-db-access"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "SuspiciousDBAccess"
+  namespace           = "${var.project_name}/Security"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "0"
+  alarm_description   = "This metric monitors suspicious database access from Kali instance"
+  alarm_actions       = [aws_sns_topic.security_alerts.arn]
+
+  tags = {
+    Name        = "${var.project_name}-suspicious-db-access"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Alarm for SSH Brute Force
+resource "aws_cloudwatch_metric_alarm" "ssh_brute_force_alarm" {
+  alarm_name          = "${var.project_name}-ssh-brute-force"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "SSHBruteForceAttempts"
+  namespace           = "${var.project_name}/Security"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "20"
+  alarm_description   = "This metric monitors SSH brute force attempts from Kali instance"
+  alarm_actions       = [aws_sns_topic.security_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  tags = {
+    Name        = "${var.project_name}-ssh-brute-force-alarm"
+    Environment = var.environment
+  }
+}
+
+# SNS Topic for Security Alerts
+resource "aws_sns_topic" "security_alerts" {
+  name = "${var.project_name}-security-alerts"
+
+  tags = {
+    Name        = "${var.project_name}-security-alerts"
+    Environment = var.environment
+  }
+}
+
+# SNS Topic Policy to allow EventBridge to publish
+resource "aws_sns_topic_policy" "security_alerts_policy" {
+  arn = aws_sns_topic.security_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowEventBridgeToPublish"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "SNS:Publish"
+        Resource = aws_sns_topic.security_alerts.arn
+      }
+    ]
+  })
+}
+
+# SNS Topic Subscription
+resource "aws_sns_topic_subscription" "security_email" {
+  topic_arn = aws_sns_topic.security_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# SECURITY MONITORING DASHBOARD
+# =============================================================================
+# CloudWatch Dashboard for Security Monitoring
+resource "aws_cloudwatch_dashboard" "security_monitoring" {
+  dashboard_name = "${var.project_name}-security-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["${var.project_name}/Security", "PortScanAttempts"],
+            [".", "SuspiciousDBAccess"],
+            [".", "SSHBruteForceAttempts"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.region
+          title   = "Security Threats Detected"
+          period  = 300
+        }
+      },
+      {
+        type   = "log"
+        x      = 0
+        y      = 6
+        width  = 24
+        height = 6
+
+        properties = {
+          query   = "SOURCE '/aws/vpc/flowlogs/${var.project_name}' | fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, action\n| filter srcaddr = \"${aws_instance.kali.private_ip}\"\n| stats count() by dstaddr, dstport\n| sort count desc"
+          region  = var.region
+          title   = "Traffic from Kali Instance"
+          view    = "table"
         }
       }
-    }
-  }
-
-  tags = {
-    Name        = "${var.project_name}-guardduty-detector"
-    Environment = var.environment
-  }
-}
-
-# GuardDuty ThreatIntelSet (optional - for custom threat intelligence)
-resource "aws_guardduty_threatintelset" "main" {
-  count       = var.enable_custom_threat_intel ? 1 : 0
-  activate    = true
-  detector_id = aws_guardduty_detector.main.id
-  format      = "TXT"
-  location    = "s3://${aws_s3_bucket.guardduty_bucket[0].bucket}/threat-intel/threats.txt"
-  name        = "${var.project_name}-threat-intel"
-
-  depends_on = [aws_s3_bucket_object.threat_intel[0]]
-
-  tags = {
-    Name        = "${var.project_name}-threat-intel"
-    Environment = var.environment
-  }
-}
-
-# S3 Bucket for GuardDuty findings and threat intelligence
-resource "aws_s3_bucket" "guardduty_bucket" {
-  count  = var.enable_custom_threat_intel ? 1 : 0
-  bucket = "${var.project_name}-guardduty-${random_id.vpc_cidr.hex}"
-
-  tags = {
-    Name        = "${var.project_name}-guardduty-bucket"
-    Environment = var.environment
-  }
-}
-
-resource "aws_s3_bucket_versioning" "guardduty_bucket_versioning" {
-  count  = var.enable_custom_threat_intel ? 1 : 0
-  bucket = aws_s3_bucket.guardduty_bucket[0].id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "guardduty_bucket_encryption" {
-  count  = var.enable_custom_threat_intel ? 1 : 0
-  bucket = aws_s3_bucket.guardduty_bucket[0].id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-# Sample threat intelligence file (includes common scanning IPs)
-resource "aws_s3_bucket_object" "threat_intel" {
-  count  = var.enable_custom_threat_intel ? 1 : 0
-  bucket = aws_s3_bucket.guardduty_bucket[0].bucket
-  key    = "threat-intel/threats.txt"
-  content = <<-EOT
-# Sample threat intelligence - known scanning IPs
-# Add your custom threat intelligence IPs here
-192.0.2.1
-198.51.100.1
-203.0.113.1
-EOT
-
-  tags = {
-    Name        = "${var.project_name}-threat-intel-file"
-    Environment = var.environment
-  }
-}
-
-# EventBridge rule to capture GuardDuty findings
-resource "aws_cloudwatch_event_rule" "guardduty_findings" {
-  name        = "${var.project_name}-guardduty-findings"
-  description = "Capture GuardDuty findings"
-
-  event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
-    detail = {
-      type = [
-        "Recon:EC2/PortProbeUnprotectedPort",
-        "Recon:EC2/Portscan",
-        "UnauthorizedAccess:EC2/SSHBruteForce",
-        "UnauthorizedAccess:EC2/RDPBruteForce",
-        "Backdoor:EC2/XORDDOS",
-        "CryptoCurrency:EC2/BitcoinTool.B!DNS",
-        "Trojan:EC2/DropPoint",
-        "Behavior:EC2/NetworkPortUnusual",
-        "Behavior:EC2/TrafficVolumeUnusual"
-      ]
-    }
+    ]
   })
-
-  tags = {
-    Name        = "${var.project_name}-guardduty-findings-rule"
-    Environment = var.environment
-  }
 }
-
-# EventBridge target to send GuardDuty findings to SNS
-resource "aws_cloudwatch_event_target" "guardduty_sns" {
-  rule      = aws_cloudwatch_event_rule.guardduty_findings.name
-  target_id = "GuardDutyFindingsToSNS"
-  arn       = aws_sns_topic.security_alerts.arn
-
-  input_transformer {
-    input_paths = {
-      severity    = "$.detail.severity"
-      type        = "$.detail.type"
-      instance_id = "$.detail.service.resourceRole.detailType.instanceDetails.instanceId"
-      title       = "$.detail.title"
-      description = "$.detail.description"
-      region      = "$.detail.region"
-    }
-
-    input_template = <<-EOT
-{
-  "alert_type": "GuardDuty Finding",
-  "severity": "<severity>",
-  "finding_type": "<type>",
-  "title": "<title>",
-  "description": "<description>",
-  "instance_id": "<instance_id>",
-  "region": "<region>",
-  "timestamp": "$.detail.service.eventFirstSeen"
-}
-EOT
-  }
-}
-
 
