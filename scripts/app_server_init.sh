@@ -16,8 +16,10 @@ unzip awscliv2.zip
 ./aws/install
 rm -rf awscliv2.zip aws/
 
-# Install Session Manager plugin
-yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+# Install SSM Agent on Ubuntu/Kali
+snap install amazon-ssm-agent --classic
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
 
 # Start and enable Apache
 systemctl start httpd
@@ -313,4 +315,3 @@ EOF
 echo "Application server setup completed with intentional vulnerabilities"
 echo "Web application available at http://[instance-ip]/"
 echo "Three main vulnerabilities configured for Red Team testing"
-

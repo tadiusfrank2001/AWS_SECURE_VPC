@@ -30,10 +30,10 @@ unzip awscliv2.zip
 ./aws/install
 rm -rf awscliv2.zip aws/
 
-# Install Session Manager plugin
-curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
-dpkg -i session-manager-plugin.deb
-rm session-manager-plugin.deb
+# Install SSM Agent on Ubuntu/Kali
+snap install amazon-ssm-agent --classic
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
 
 # Create red team user directories
 mkdir -p /home/kali/targets
