@@ -775,3 +775,163 @@ resource "aws_instance" "db_server" {
   }
 }
 
+
+# =============================================================================
+# GUARDDUTY CONFIGURATION FOR THREAT DETECTION
+# =============================================================================
+# Enable GuardDuty Detector
+resource "aws_guardduty_detector" "main" {
+  enable                       = true
+  finding_publishing_frequency = "FIFTEEN_MINUTES"
+
+  datasources {
+    s3_logs {
+      enable = true
+    }
+    kubernetes {
+      audit_logs {
+        enable = false # Not using EKS in this setup
+      }
+    }
+    malware_protection {
+      scan_ec2_instance_with_findings {
+        ebs_volumes {
+          enable = true
+        }
+      }
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-guardduty-detector"
+    Environment = var.environment
+  }
+}
+
+# GuardDuty ThreatIntelSet (optional - for custom threat intelligence)
+resource "aws_guardduty_threatintelset" "main" {
+  count       = var.enable_custom_threat_intel ? 1 : 0
+  activate    = true
+  detector_id = aws_guardduty_detector.main.id
+  format      = "TXT"
+  location    = "s3://${aws_s3_bucket.guardduty_bucket[0].bucket}/threat-intel/threats.txt"
+  name        = "${var.project_name}-threat-intel"
+
+  depends_on = [aws_s3_bucket_object.threat_intel[0]]
+
+  tags = {
+    Name        = "${var.project_name}-threat-intel"
+    Environment = var.environment
+  }
+}
+
+# S3 Bucket for GuardDuty findings and threat intelligence
+resource "aws_s3_bucket" "guardduty_bucket" {
+  count  = var.enable_custom_threat_intel ? 1 : 0
+  bucket = "${var.project_name}-guardduty-${random_id.vpc_cidr.hex}"
+
+  tags = {
+    Name        = "${var.project_name}-guardduty-bucket"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "guardduty_bucket_versioning" {
+  count  = var.enable_custom_threat_intel ? 1 : 0
+  bucket = aws_s3_bucket.guardduty_bucket[0].id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "guardduty_bucket_encryption" {
+  count  = var.enable_custom_threat_intel ? 1 : 0
+  bucket = aws_s3_bucket.guardduty_bucket[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Sample threat intelligence file (includes common scanning IPs)
+resource "aws_s3_bucket_object" "threat_intel" {
+  count  = var.enable_custom_threat_intel ? 1 : 0
+  bucket = aws_s3_bucket.guardduty_bucket[0].bucket
+  key    = "threat-intel/threats.txt"
+  content = <<-EOT
+# Sample threat intelligence - known scanning IPs
+# Add your custom threat intelligence IPs here
+192.0.2.1
+198.51.100.1
+203.0.113.1
+EOT
+
+  tags = {
+    Name        = "${var.project_name}-threat-intel-file"
+    Environment = var.environment
+  }
+}
+
+# EventBridge rule to capture GuardDuty findings
+resource "aws_cloudwatch_event_rule" "guardduty_findings" {
+  name        = "${var.project_name}-guardduty-findings"
+  description = "Capture GuardDuty findings"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        "Recon:EC2/PortProbeUnprotectedPort",
+        "Recon:EC2/Portscan",
+        "UnauthorizedAccess:EC2/SSHBruteForce",
+        "UnauthorizedAccess:EC2/RDPBruteForce",
+        "Backdoor:EC2/XORDDOS",
+        "CryptoCurrency:EC2/BitcoinTool.B!DNS",
+        "Trojan:EC2/DropPoint",
+        "Behavior:EC2/NetworkPortUnusual",
+        "Behavior:EC2/TrafficVolumeUnusual"
+      ]
+    }
+  })
+
+  tags = {
+    Name        = "${var.project_name}-guardduty-findings-rule"
+    Environment = var.environment
+  }
+}
+
+# EventBridge target to send GuardDuty findings to SNS
+resource "aws_cloudwatch_event_target" "guardduty_sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_findings.name
+  target_id = "GuardDutyFindingsToSNS"
+  arn       = aws_sns_topic.security_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      severity    = "$.detail.severity"
+      type        = "$.detail.type"
+      instance_id = "$.detail.service.resourceRole.detailType.instanceDetails.instanceId"
+      title       = "$.detail.title"
+      description = "$.detail.description"
+      region      = "$.detail.region"
+    }
+
+    input_template = <<-EOT
+{
+  "alert_type": "GuardDuty Finding",
+  "severity": "<severity>",
+  "finding_type": "<type>",
+  "title": "<title>",
+  "description": "<description>",
+  "instance_id": "<instance_id>",
+  "region": "<region>",
+  "timestamp": "$.detail.service.eventFirstSeen"
+}
+EOT
+  }
+}
+
+

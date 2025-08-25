@@ -168,3 +168,9 @@ variable "environment" {
     error_message = "Environment must be one of: dev, test, staging, prod, lab, demo."
   }
 }
+
+variable "enable_custom_threat_intel" {
+  description = "Enable custom threat intelligence feeds"
+  type        = bool
+  default     = false
+}
