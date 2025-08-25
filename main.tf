@@ -511,17 +511,15 @@ resource "aws_route_table_association" "private_db" {
 
 
 
-
 # =============================================================================
-# SECURITY GROUPS - NETWORK-LEVEL FIREWALL RULES
+# SECURITY GROUPS
 # =============================================================================
-# Public Security Group - For bastion host and Kali Linux instances
-resource "aws_security_group" "public_sg" {
-  name        = "${var.project_name}-public-sg"
-  description = "Security group for public instances (Bastion + Kali)"
+# Security Group for Kali Linux
+resource "aws_security_group" "kali_sg" {
+  name        = "${var.project_name}-kali-sg"
+  description = "Security group for Kali Linux instance"
   vpc_id      = aws_vpc.main.id
 
-  # SSH access restricted to your IP address only
   ingress {
     description = "SSH from my IP"
     from_port   = 22
@@ -530,7 +528,6 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = [var.my_ip]
   }
 
-  # HTTP access for web services
   ingress {
     description = "HTTP"
     from_port   = 80
@@ -539,7 +536,6 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTPS access for secure web services
   ingress {
     description = "HTTPS"
     from_port   = 443
@@ -548,9 +544,8 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound traffic
   egress {
-    description = "All outbound traffic"
+    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -558,48 +553,35 @@ resource "aws_security_group" "public_sg" {
   }
 
   tags = {
-    Name        = "${var.project_name}-public-sg"
-    Type        = "Public"
+    Name        = "${var.project_name}-kali-sg"
     Environment = var.environment
   }
 }
 
-# Application Security Group - For application tier servers
+# Security Group for Application Server
 resource "aws_security_group" "app_sg" {
   name        = "${var.project_name}-app-sg"
-  description = "Security group for application servers"
+  description = "Security group for application server"
   vpc_id      = aws_vpc.main.id
 
-  # SSH access only from public subnet (bastion host)
-  ingress {
-    description     = "SSH from bastion"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.public_sg.id]
-  }
-
-  # HTTP access for application services
   ingress {
     description = "HTTP from VPC"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = [local.vpc_cidr]
   }
 
-  # HTTPS access for secure application services
   ingress {
     description = "HTTPS from VPC"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = [local.vpc_cidr]
   }
 
-  # Allow all outbound traffic for updates and external API calls
   egress {
-    description = "All outbound traffic"
+    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -608,36 +590,32 @@ resource "aws_security_group" "app_sg" {
 
   tags = {
     Name        = "${var.project_name}-app-sg"
-    Tier        = "Application"
     Environment = var.environment
   }
 }
 
-# Database Security Group - Most restrictive, only essential access
+# Security Group for Database Server
 resource "aws_security_group" "db_sg" {
   name        = "${var.project_name}-db-sg"
-  description = "Security group for database servers"
+  description = "Security group for database server"
   vpc_id      = aws_vpc.main.id
 
-  # MySQL/MariaDB access only from application servers
   ingress {
-    description     = "MySQL from app servers"
+    description     = "MySQL from app"
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
     security_groups = [aws_security_group.app_sg.id]
   }
 
-  # SSH access only from bastion host for administration
   ingress {
-    description     = "SSH from bastion"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.public_sg.id]
+    description = "SSH for monitoring"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [local.private_app_subnet_cidr]
   }
 
-  # Restrictive outbound access - only HTTP/HTTPS for updates
   egress {
     description = "HTTP for updates"
     from_port   = 80
@@ -654,7 +632,6 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # DNS resolution
   egress {
     description = "DNS"
     from_port   = 53
@@ -665,10 +642,11 @@ resource "aws_security_group" "db_sg" {
 
   tags = {
     Name        = "${var.project_name}-db-sg"
-    Tier        = "Database"
     Environment = var.environment
   }
 }
+
+
 
 
 
