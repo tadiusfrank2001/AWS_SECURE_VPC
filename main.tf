@@ -756,3 +756,22 @@ resource "aws_instance" "app_server" {
 }
 
 
+# Database Server (Target)
+resource "aws_instance" "db_server" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.db_instance_type
+  key_name               = aws_key_pair.main.key_name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+  subnet_id              = aws_subnet.private_db.id
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
+
+  user_data = file("${path.module}/scripts/db_server_init.sh")
+
+  tags = {
+    Name        = "${var.project_name}-db-server"
+    Team        = "Target"
+    Tier        = "Database"
+    Environment = var.environment
+  }
+}
+
