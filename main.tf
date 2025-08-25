@@ -84,6 +84,41 @@ resource "random_password" "blue_team_passwords" {
 }
 
 
+# =============================================================================
+# LOCAL VALUES FOR DYNAMIC CIDR CALCULATION
+# =============================================================================
+locals {
+  # Calculate VPC CIDR block dynamically
+  vpc_cidr = "10.${random_id.vpc_cidr.dec}.0.0/16"
+  
+  # Calculate subnet CIDR blocks within the VPC
+  public_subnet_cidr     = "10.${random_id.vpc_cidr.dec}.1.0/24"
+  private_app_subnet_cidr = "10.${random_id.vpc_cidr.dec}.2.0/24"
+  private_db_subnet_cidr  = "10.${random_id.vpc_cidr.dec}.3.0/24"
+  
+  # Team member configurations
+  red_team_members = [
+    {
+      username = "${var.project_name}-red-member-1"
+      password = random_password.red_team_passwords[0].result
+    },
+    {
+      username = "${var.project_name}-red-member-2"
+      password = random_password.red_team_passwords[1].result
+    }
+  ]
+  
+  blue_team_members = [
+    {
+      username = "${var.project_name}-blue-member-1"
+      password = random_password.blue_team_passwords[0].result
+    },
+    {
+      username = "${var.project_name}-blue-member-2"
+      password = random_password.blue_team_passwords[1].result
+    }
+  ]
+}
 
 
 
