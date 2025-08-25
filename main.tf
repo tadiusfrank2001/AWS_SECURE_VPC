@@ -876,7 +876,7 @@ resource "aws_iam_role_policy" "flow_log" {
 }
 
 # CloudWatch Metric Filter for Port Scanning Activity
-resource "aws_cloudwatch_metric_filter" "port_scan_activity" {
+resource "aws_cloudwatch_log_metric_filter" "port_scan_activity" {
   name           = "${var.project_name}-port-scan-activity"
   log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
   
@@ -891,7 +891,7 @@ resource "aws_cloudwatch_metric_filter" "port_scan_activity" {
 }
 
 # CloudWatch Metric Filter for Suspicious Database Access
-resource "aws_cloudwatch_metric_filter" "suspicious_activity" {
+resource "aws_cloudwatch_log_metric_filter" "suspicious_activity" {
   name           = "${var.project_name}-suspicious-activity"
   log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
   
@@ -905,7 +905,7 @@ resource "aws_cloudwatch_metric_filter" "suspicious_activity" {
 }
 
 # CloudWatch Metric Filter for SSH Brute Force Attempts
-resource "aws_cloudwatch_metric_filter" "ssh_brute_force" {
+resource "aws_cloudwatch_log_metric_filter" "ssh_brute_force" {
   name           = "${var.project_name}-ssh-brute-force"
   log_group_name = aws_cloudwatch_log_group.vpc_flow_log.name
   
