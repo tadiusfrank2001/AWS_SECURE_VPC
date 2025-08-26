@@ -45,7 +45,7 @@ output "security_monitoring" {
 
 output "team_credentials" {
   description = "Team member credentials (store securely)"
-  sensitive   = true
+  sensitive   = false
   value = {
     red_team = {
       for i, member in local.red_team_members : member.username => {
