@@ -5,17 +5,17 @@
 # Lightweight setup for VPC Flow Log testing
 
 # Update system packages
-apt update -y
-apt upgrade -y
+yum update -y
+yum upgrade -y
 
 # Install only essential penetration testing tools
-apt install -y nmap hydra sqlmap nikto metasploit-framework
+yum install -y nmap hydra sqlmap nikto metasploit-framework
 
 # Install network scanning tools
-apt install -y masscan zmap
+yum install -y masscan zmap
 
 # Install Python and pip for custom scripts
-apt install -y python3 python3-pip
+yum install -y python3 python3-pip
 
 # Install Python libraries for network operations
 pip3 install paramiko requests scapy

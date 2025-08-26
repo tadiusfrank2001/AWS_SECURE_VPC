@@ -703,21 +703,6 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# Get latest Kali Linux AMI from official Kali Linux account
-data "aws_ami" "kali_linux" {
-  most_recent = true
-  owners      = ["679593333241"]  # Official Kali Linux AWS account
-
-  filter {
-    name   = "name"
-    values = ["kali-linux-*-x86_64-*"] # Matches official AMI names
-  }
-
-    filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
 
 
 
@@ -735,7 +720,7 @@ data "aws_ami" "kali_linux" {
 
 # Kali Linux Instance - Red Team attack platform
 resource "aws_instance" "kali" {
-  ami                    = data.aws_ami.kali_linux.id
+  ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.kali_instance_type
   key_name               = aws_key_pair.main.key_name
   vpc_security_group_ids = [aws_security_group.kali_sg.id]
