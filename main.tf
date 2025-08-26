@@ -63,10 +63,25 @@ resource "aws_key_pair" "main" {
 # RANDOM RESOURCES FOR DYNAMIC CONFIGURATIONS
 # =============================================================================
 # Generate random CIDR blocks for subnets within the VPC
-resource "random_id" "vpc_cidr" {
-  byte_length = 1
-  keepers = {
-    project = var.project_name
+# Randomly pick the 3rd octet for the VPC range (10.X.0.0/16)
+resource "random_integer" "vpc_octet" {
+  min = 0
+  max = 255
+}
+
+locals {
+  # VPC base CIDR is randomized in the second octet
+  vpc_cidr = "10.${random_integer.vpc_octet.result}.0.0/16"
+}
+
+resource "aws_vpc" "main" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "${var.project_name}-vpc"
+    Environment = var.environment
   }
 }
 
@@ -372,7 +387,7 @@ resource "aws_internet_gateway" "main" {
 # Public Subnet - Houses bastion host and Kali Linux (Red Team) instance
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidr
+  cidr_block              = cidrsubnet(local.vpc_cidr, 8, 1) # 10.X.1.0/24
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true  # Auto-assign public IPs
 
@@ -386,7 +401,7 @@ resource "aws_subnet" "public" {
 # Private Application Subnet - Houses application servers (Target infrastructure)
 resource "aws_subnet" "private_app" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_app_subnet_cidr
+  cidr_block        = cidrsubnet(local.vpc_cidr, 8, 2) # 10.X.2.0/24
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
@@ -400,7 +415,7 @@ resource "aws_subnet" "private_app" {
 # Private Database Subnet - Houses database servers (Most protected tier)
 resource "aws_subnet" "private_db" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_db_subnet_cidr
+  cidr_block        = cidrsubnet(local.vpc_cidr, 8, 3) # 10.X.3.0/24
   availability_zone = data.aws_availability_zones.available.names[0] 
 
   tags = {
