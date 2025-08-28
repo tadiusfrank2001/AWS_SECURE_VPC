@@ -1,145 +1,65 @@
-
 #!/bin/bash
 
-# Kali Linux Red Team Instance Initialization Script
-# Lightweight setup for VPC Flow Log testing
+# Minimal Red Team Tools Installation for Amazon Linux 2
+# Only installs tools needed for your specific testing scenarios
 
-# Update system packages
-yum update -y
-yum upgrade -y
+echo "Installing minimal red team tools..."
 
-# Install only essential penetration testing tools
-yum install -y nmap hydra sqlmap nikto metasploit-framework
+# Update system and install dependencies
+sudo yum update -y
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y git gcc make pcre-devel openssl-devel zlib-devel perl mysql
 
-# Install network scanning tools
-yum install -y masscan zmap
+# Install nmap (available in AL2 repos)
+sudo yum install -y nmap
 
-# Install Python and pip for custom scripts
-yum install -y python3 python3-pip
+# Install hydra from source
+echo "Installing hydra..."
+cd /tmp
+git clone https://github.com/vanhauser-thc/thc-hydra.git
+cd thc-hydra
+./configure
+make
+sudo make install
+cd ~
 
-# Install Python libraries for network operations
-pip3 install paramiko requests scapy
+# Install nikto from GitHub
+echo "Installing nikto..."
+sudo git clone https://github.com/sullo/nikto.git /opt/nikto
+sudo chmod +x /opt/nikto/program/nikto.pl
+sudo ln -sf /opt/nikto/program/nikto.pl /usr/local/bin/nikto
 
-# Enable SSH logging for blue team analysis
-sed -i 's/#LogLevel INFO/LogLevel VERBOSE/' /etc/ssh/sshd_config
-systemctl restart ssh
+# Download rockyou.txt wordlist (needed for hydra)
+echo "Downloading rockyou.txt wordlist..."
+sudo mkdir -p /usr/share/wordlists
+cd /usr/share/wordlists
+sudo wget https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt
+sudo chmod 644 rockyou.txt
 
-# Install AWS CLI v2
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-./aws/install
-rm -rf awscliv2.zip aws/
+# Verify installations
+echo "Verifying tool installations..."
+echo "nmap: $(which nmap)"
+echo "hydra: $(which hydra)"
+echo "nikto: $(which nikto)"
+echo "mysql: $(which mysql)"
+echo "rockyou.txt: $(ls -la /usr/share/wordlists/rockyou.txt)"
 
-# Install SSM Agent on Ubuntu/Kali
-yum install amazon-ssm-agent --classic
-systemctl enable amazon-ssm-agent
-systemctl start amazon-ssm-agent
+# Create quick test aliases
+cat >> ~/.bashrc << 'EOF'
 
-# Create red team user directories
-mkdir -p /home/targets
-mkdir -p /home/results
-mkdir -p /home/scripts
-
-# Create target information file with network details
-cat > /home/targets/network_info.txt << 'EOF'
-=== RED TEAM TARGET NETWORK ===
-VPC CIDR: 10.0.0.0/16
-Public Subnet: 10.0.1.0/24
-App Subnet: 10.0.2.0/24  
-DB Subnet: 10.0.3.0/24
-
-Expected Targets:
-- App Server: 10.0.2.0/24 range
-- DB Server: 10.0.3.0/24 range
-
-Attack Objective:
-Generate VPC Flow Log alerts by attempting SSH connections
-to trigger blue team detection and response.
+# Red Team Testing Aliases
+alias db-test='mysql -h 10.237.3.130 -u root -p'
+alias port-scan='nmap -sS 10.237.2.189 10.237.3.130'
+alias ssh-brute='hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.237.2.189'
+alias vuln-scan='nikto -h http://10.237.2.189'
 EOF
 
-# Create useful red team aliases
-cat >> /home/.bashrc << 'EOF'
-
-# Red Team Aliases
-alias ll='ls -alF'
-alias la='ls -A'
-alias targets='cd /home/targets'
-alias results='cd /home/results'
-alias scripts='cd /home/scripts'
-
-# Quick reconnaissance commands
-alias quick-scan='nmap -sS'
-alias port-scan='nmap -sS -sV'
-alias network-sweep='nmap -sP'
-alias host-discovery='nmap -sn'
-EOF
-
-# Create network reconnaissance script
-cat > /home/scripts/network_recon.sh << 'EOF'
-#!/bin/bash
-echo "=== RED TEAM NETWORK RECONNAISSANCE ==="
-echo "Starting network discovery..."
-
-# Discover live hosts in target subnets
-echo "Discovering hosts in 10.0.2.0/24 (App Subnet):"
-nmap -sn 10.0.2.0/24
-
-echo "Discovering hosts in 10.0.3.0/24 (DB Subnet):"
-nmap -sn 10.0.3.0/24
-
-echo "Quick port scan of discovered hosts:"
-nmap -sS -F 10.0.2.0/24 10.0.3.0/24
-
-echo "Results saved to /home/results/recon_$(date +%Y%m%d_%H%M).txt"
-nmap -sS -F 10.0.2.0/24 10.0.3.0/24 > /home/results/recon_$(date +%Y%m%d_%H%M).txt
-EOF
-
-
-
-
-# Make scripts executable
-chmod +x /home/scripts/*.sh
-
-
-
-# Create red team MOTD
-cat > /etc/motd << 'EOF'
-*************************************************
-*          RED TEAM ATTACK MACHINE              *
-*                                               *
-*  Lightweight Kali instance for VPC Flow Log  *
-*  testing and blue team detection exercises.   *
-*                                               *
-*  Quick Start:                                 *
-*  - targets     : Go to targets directory      *
-*  - scripts     : Access red team scripts      *
-*  - quick-scan  : Fast network scan            *
-*                                               *
-*  Key Scripts:                                 *
-*  - network_recon.sh : Discover target hosts   *
-*                                               *
-*************************************************
-EOF
-
-# Create a simple status check
-cat > /home/status_check.sh << 'EOF'
-#!/bin/bash
-echo "=== RED TEAM SYSTEM STATUS ==="
-echo "IP Configuration:"
-ip addr show eth0 | grep inet
+echo "Installation complete!"
+echo "Available commands:"
+echo "- nmap -sS 10.237.2.189 10.237.3.130"
+echo "- hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.237.2.189"
+echo "- nikto -h http://10.237.2.189"
+echo "- mysql -h 10.237.3.130 -u root -p"
 echo ""
-echo "Network Connectivity:"
-ping -c 2 8.8.8.8
-echo ""
-echo "Target Reachability:"
-ping -c 1 10.0.2.1 2>/dev/null && echo "App subnet gateway reachable" || echo "App subnet gateway not reachable"
-ping -c 1 10.0.3.1 2>/dev/null && echo "DB subnet gateway reachable" || echo "DB subnet gateway not reachable"
-echo ""
-echo "Installed Tools:"
-which nmap masscan zmap hydra python3
-EOF
-
-chmod +x /home/status_check.sh
-
-# Log the completion of initialization
-echo "$(date): Kali Imitation LOL Linux red team initialization completed" >> /var/log/init.log
+echo "Or use aliases: port-scan, ssh-brute, vuln-scan, db-test"
+echo "Restart your shell or run 'source ~/.bashrc' to use aliases"
