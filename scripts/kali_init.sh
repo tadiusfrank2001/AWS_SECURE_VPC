@@ -15,9 +15,9 @@ sudo yum install -y nmap
 
 # Install hydra from source
 echo "Installing hydra..."
-cd /tmp
-git clone https://github.com/vanhauser-thc/thc-hydra.git
-cd thc-hydra
+sudo cd /tmp
+sudo git clone https://github.com/vanhauser-thc/thc-hydra.git
+sudo cd thc-hydra
 ./configure
 make
 sudo make install
