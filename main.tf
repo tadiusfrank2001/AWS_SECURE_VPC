@@ -332,7 +332,7 @@ resource "aws_iam_group_membership" "red_team_membership" {
 # Main VPC with DNS support
 resource "aws_vpc" "main" {
   cidr_block           = local.vpc_cidr
-  enable_dns_hostnames = true
+  enable_dns_hostnames = true # Rent name based on close by dns server
   enable_dns_support   = true
 
   tags = {
