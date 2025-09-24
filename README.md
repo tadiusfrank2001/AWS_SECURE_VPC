@@ -1,5 +1,5 @@
 
-# Red vs Blue Team Cybersecurity Lab
+# AWS Secure VPC for Cyberattack Simulations
 
 A comprehensive AWS-based cybersecurity training environment that simulates real-world attack and defense scenarios using Terraform Infrastructure as Code.
 
